@@ -1,4 +1,12 @@
-import { FlatList, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Button,
+  FlatList,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import React, { useEffect, useState } from 'react';
 import firestore from '@react-native-firebase/firestore';
 import MyView from '../components/MyView';
@@ -6,47 +14,62 @@ import MyText from '../components/MyText';
 import Search from '../components/Search';
 import Category from '../components/Category';
 import { ActivityIndicator } from 'react-native';
-
+import FoodCard from '../components/FoodCard';
 
 const Home = () => {
-
-    const [loading, setLoading] = useState(true); // Set loading to true on component mount
+  const [loading, setLoading] = useState(true); // Set loading to true on component mount
   const [categories, setCategories] = useState([]); // Initial empty array of users
-  // const [dish,setDish ] = useState("");
-  // const getData = async () => {
-  //   const foodsCollection = await firestore().collection("foods").get()
-  //   console.log(foodsCollection.docs[0].data());
-  //   setDish(foodsCollection.docs[0].data())
-  // }
-  // useEffect(()=>{
-  //   getData();
+  const [foods, setFoods] = useState([]);
 
-  // },[])
+  const addData = () => {
+    firestore().collection('categories').add({
+      title: 'Vegetables ',
+      imageURL:'https://media.istockphoto.com/id/512907694/photo/collection-vegetables.jpg?s=612x612&w=0&k=20&c=LGPsT8tp72qkDNwRbA6kr75w1JgzoNl8uklz4B5BxJs='
+    });
+  };
 
-  useEffect(()=>{
-  const subscriber = firestore()
-    .collection('categories')
-    .onSnapshot(querySnapshot => {
-      const categories = [];
+  useEffect(() => {
+    const subscriber = firestore()
+      .collection('categories')
+      .onSnapshot(querySnapshot => {
+        const categories = [];
 
-      querySnapshot.forEach(documentSnapshot => {
-        categories.push({
-          ...documentSnapshot.data(),
-          key: documentSnapshot.id,
+        querySnapshot.forEach(documentSnapshot => {
+          categories.push({
+            ...documentSnapshot.data(),
+            key: documentSnapshot.id,
+          });
         });
+
+        setCategories(categories);
+        setLoading(false);
       });
 
-      setCategories(categories);
-      setLoading(false);
-    });
+    // Unsubscribe from events when no longer in use
+    return () => subscriber();
 
-  // Unsubscribe from events when no longer in use
-  return () => subscriber();
+    if (loading) {
+      return <ActivityIndicator />;
+    }
+  }, []);
+  useEffect(() => {
+    const subscriber = firestore()
+      .collection('foods')
+      .onSnapshot(res => {
+        const foods = [];
 
-   if (loading) {
-    return <ActivityIndicator />;
-  }
-}, []);
+        res.forEach(documentSnapshot => {
+          foods.push({
+            ...documentSnapshot.data(),
+            key: documentSnapshot.id,
+          });
+        });
+
+        setFoods(foods);
+
+        return () => subscriber();
+      });
+  }, []);
   return (
     <MyView style={styles.con}>
       <MyText
@@ -64,6 +87,7 @@ const Home = () => {
       </MyText>
       <Search />
       <MyText style={styles.text}>Categories</MyText>
+      <Button title='Add Category' onPress={addData} />
       <View style={{ height: 150 }}>
         {/* <ScrollView showsHorizontalScrollIndicator={false} horizontal>
           <Category 
@@ -84,15 +108,31 @@ const Home = () => {
             image={require('../notifications/assets/food/KFC.png')}
           />
         </ScrollView> */}
-        <FlatList 
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={categories}
+          renderItem={({ item }) => (
+            <Category title={item.title} image={{ uri: item.imageURL }} />
+          )}
+        />
+      </View>
+
+      <MyText style={styles.text}>Main Dishes</MyText>
+
+      <FlatList
         horizontal
         showsHorizontalScrollIndicator={false}
-        data={categories} renderItem={({item})=>(
-          <Category title={item.title} 
-          image={{uri:item.imageURL}}/>
-        )} />
-      </View>
-      <MyText style={styles.text}>Main Dishes</MyText>
+        data={foods}
+        keyExtractor={item => item.id}
+        renderItem={({ item }) => (
+          <FoodCard
+            title={item.title}
+            image={item.imageURL}
+            price={item.price}
+          />
+        )}
+      />
     </MyView>
   );
 };
